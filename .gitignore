@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment files with REAL secrets (never commit these)
+.env
+.env.local
+.env.production
+
+# BUT keep the example template for others to copy
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Railway / deployment
+.railway/
+
+# Editor
+.vscode/
+.idea/
+*.swp
