@@ -1,20 +1,23 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 允许跨域（如果你的前端和后端域名不同）
+// 允许跨域
 app.use(cors());
 
+// 解析 JSON body
+app.use(express.json());
+
 // 静态文件服务（前端页面）
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ───────────────────────────────────────────────
 // PostgreSQL 连接池
-// 从环境变量读取，兼容 Railway 和本地开发
 // ───────────────────────────────────────────────
 const pool = new Pool({
   host: process.env.DATABASE_HOST,
@@ -22,17 +25,14 @@ const pool = new Pool({
   database: process.env.DATABASE_NAME,
   user: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASS,
-  // Railway PostgreSQL 通常需要 SSL
   ssl: process.env.DATABASE_SSL === 'true' || process.env.DATABASE_SSL === 'require'
     ? { rejectUnauthorized: false }
     : false,
-  // 连接池配置
   max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000,
 });
 
-// 测试数据库连接
 pool.on('connect', () => {
   console.log('✅ PostgreSQL 已连接');
 });
@@ -59,12 +59,12 @@ app.get('/api/cars', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────
-// API: 获取电池电量历史（按小时聚合，减少数据点）
-// 参数: car_id, days（默认7天）
+// API: 获取电池电量历史（按小时聚合）
+// 参数: car_id, days（默认7天，最多90天）
 // ───────────────────────────────────────────────
 app.get('/api/battery-history', async (req, res) => {
   const carId = req.query.car_id || 1;
-  const days = Math.min(parseInt(req.query.days) || 7, 90); // 最多90天
+  const days = Math.min(parseInt(req.query.days) || 7, 90);
 
   try {
     const result = await pool.query(`
@@ -105,7 +105,6 @@ app.get('/api/car-status', async (req, res) => {
   const carId = req.query.car_id || 1;
 
   try {
-    // 最新位置数据
     const posResult = await pool.query(`
       SELECT 
         battery_level,
@@ -124,7 +123,6 @@ app.get('/api/car-status', async (req, res) => {
       LIMIT 1
     `, [carId]);
 
-    // 最新状态
     const stateResult = await pool.query(`
       SELECT state, start_date, end_date
       FROM states
@@ -133,7 +131,6 @@ app.get('/api/car-status', async (req, res) => {
       LIMIT 1
     `, [carId]);
 
-    // 今日行驶里程
     const driveResult = await pool.query(`
       SELECT COALESCE(SUM(distance), 0) AS today_distance
       FROM drives
@@ -216,6 +213,33 @@ app.get('/api/recent-charges', async (req, res) => {
 });
 
 // ───────────────────────────────────────────────
+// API: 获取月度统计
+// ───────────────────────────────────────────────
+app.get('/api/monthly-stats', async (req, res) => {
+  const carId = req.query.car_id || 1;
+
+  try {
+    const result = await pool.query(`
+      SELECT 
+        DATE_TRUNC('month', start_date) AS month,
+        ROUND(SUM(distance)::numeric, 1) AS total_distance,
+        ROUND(SUM(duration_min)::numeric, 1) AS total_duration,
+        COUNT(*) AS drive_count
+      FROM drives
+      WHERE car_id = $1
+        AND start_date > NOW() - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', start_date)
+      ORDER BY month DESC
+    `, [carId]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('获取月度统计失败:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────
 // 健康检查
 // ───────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
@@ -224,7 +248,7 @@ app.get('/api/health', (req, res) => {
 
 // 启动服务
 app.listen(PORT, () => {
-  console.log(`🚗 TeslaMate Dashboard API 已启动`);
+  console.log('🚗 TeslaMate Dashboard API 已启动');
   console.log(`📡 端口: ${PORT}`);
   console.log(`🌐 访问: http://localhost:${PORT}`);
 });
