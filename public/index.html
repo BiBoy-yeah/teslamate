@@ -1,416 +1,628 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Tesla Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0a0a0a;
-      color: #e0e0e0;
-      min-height: 100vh;
-    }
-    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #333;
-    }
-    .header h1 { font-size: 24px; font-weight: 600; color: #fff; }
-    .header .status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      color: #888;
-    }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: #22c55e; animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .card {
-      background: #141414;
-      border: 1px solid #222;
-      border-radius: 12px;
-      padding: 20px;
-      transition: border-color 0.2s;
-    }
-    .card:hover { border-color: #333; }
-    .card-label {
-      font-size: 12px;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-    }
-    .card-value {
-      font-size: 32px;
-      font-weight: 700;
-      color: #fff;
-    }
-    .card-unit {
-      font-size: 14px;
-      color: #666;
-      margin-left: 4px;
-    }
-    .card-sub {
-      font-size: 13px;
-      color: #666;
-      margin-top: 4px;
-    }
-    .battery-high { color: #22c55e; }
-    .battery-mid { color: #eab308; }
-    .battery-low { color: #ef4444; }
-    .section {
-      background: #141414;
-      border: 1px solid #222;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-    }
-    .section-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .chart { width: 100%; height: 350px; }
-    .controls {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .btn {
-      padding: 6px 14px;
-      border: 1px solid #333;
-      background: #1a1a1a;
-      color: #ccc;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s;
-    }
-    .btn:hover { background: #222; border-color: #444; }
-    .btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
-    .list-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid #1f1f1f;
-    }
-    .list-item:last-child { border-bottom: none; }
-    .list-left { display: flex; flex-direction: column; gap: 4px; }
-    .list-title { font-size: 14px; color: #e0e0e0; }
-    .list-meta { font-size: 12px; color: #666; }
-    .list-right { text-align: right; }
-    .list-value { font-size: 14px; font-weight: 600; color: #fff; }
-    .list-sub { font-size: 12px; color: #666; }
-    .loading { text-align: center; padding: 40px; color: #666; }
-    .error {
-      background: #1a0505;
-      border: 1px solid #451a1a;
-      color: #ef4444;
-      padding: 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    }
-    .empty { text-align: center; padding: 30px; color: #555; font-size: 14px; }
-    @media (max-width: 768px) {
-      .cards { grid-template-columns: repeat(2, 1fr); }
-      .card-value { font-size: 24px; }
-      .chart { height: 280px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Tesla Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --primary: #2563eb;
+  --primary-light: #dbeafe;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-hover: 0 4px 6px rgba(0,0,0,0.05), 0 10px 24px rgba(0,0,0,0.08);
+  --radius: 16px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1280px; margin:0 auto; padding: 24px 20px; }
+
+/* Header */
+.header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom: 28px; animation: fadeInDown 0.6s ease;
+}
+.header-left { display:flex; align-items:center; gap: 14px; }
+.header-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), #3b82f6);
+  display:flex; align-items:center; justify-content:center;
+  font-size: 22px; color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+}
+.header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.header p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.status-pill {
+  display:flex; align-items:center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  background: var(--success-light); color: var(--success);
+  font-size: 13px; font-weight: 500;
+  animation: pulse-dot 2s infinite;
+}
+.status-pill .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Grid layouts */
+.grid-4 { display:grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-2 { display:grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+/* Cards */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid var(--border); padding: 20px;
+  box-shadow: var(--shadow); transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  animation: fadeInUp 0.5s ease backwards;
+}
+.card:hover {
+  transform: translateY(-3px); box-shadow: var(--shadow-hover);
+  border-color: #d1d5db;
+}
+.card-header {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  margin-bottom: 12px;
+}
+.card-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.card-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display:flex; align-items:center; justify-content:center; font-size: 16px;
+}
+.card-value {
+  font-size: 28px; font-weight: 700; color: var(--text); line-height: 1.2;
+  margin-top: 4px;
+}
+.card-value .unit { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-left: 3px; }
+.card-sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+.card-sub .up { color: var(--success); font-weight: 600; }
+.card-sub .down { color: var(--danger); font-weight: 600; }
+
+/* Progress bar for battery */
+.battery-bar {
+  width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px;
+  margin-top: 10px; overflow: hidden;
+}
+.battery-bar-inner {
+  height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Section titles */
+.section-title {
+  font-size: 18px; font-weight: 700; margin-bottom: 16px;
+  display:flex; align-items:center; gap: 8px; animation: fadeInUp 0.5s ease;
+}
+.section-title .icon { font-size: 20px; }
+
+/* Chart container */
+.chart-section {
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid var(--border); padding: 20px;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+  animation: fadeInUp 0.6s ease backwards;
+}
+.chart-controls {
+  display:flex; gap: 8px; margin-bottom: 16px;
+}
+.chart-btn {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); font-size: 13px;
+  font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: inherit;
+}
+.chart-btn:hover { background: var(--bg); }
+.chart-btn.active {
+  background: var(--primary); color: white; border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+}
+.chart { width: 100%; height: 320px; }
+
+/* Lists */
+.list-section {
+  background: var(--card); border-radius: var(--radius);
+  border: 1px solid var(--border); padding: 20px;
+  box-shadow: var(--shadow); animation: fadeInUp 0.7s ease backwards;
+}
+.list-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding: 14px 0; border-bottom: 1px solid #f3f4f6;
+  transition: background 0.2s; border-radius: 8px; padding-left: 10px; padding-right: 10px;
+  margin-left: -10px; margin-right: -10px;
+}
+.list-item:hover { background: #f9fafb; }
+.list-item:last-child { border-bottom: none; }
+.list-left { display:flex; flex-direction:column; gap: 4px; }
+.list-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.list-meta { font-size: 12px; color: var(--text-secondary); }
+.list-right { text-align: right; }
+.list-value { font-size: 15px; font-weight: 700; color: var(--text); }
+.list-sub { font-size: 12px; color: var(--text-secondary); }
+
+/* Vehicle info banner */
+.vehicle-banner {
+  background: linear-gradient(135deg, #1e3a5f, #2563eb);
+  border-radius: var(--radius); padding: 24px;
+  color: white; margin-bottom: 20px;
+  display:flex; justify-content:space-between; align-items:center;
+  box-shadow: 0 10px 30px rgba(37,99,235,0.2);
+  animation: fadeInUp 0.5s ease;
+}
+.vehicle-banner h2 { font-size: 20px; font-weight: 700; }
+.vehicle-banner .vin { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+.vehicle-banner .meta { font-size: 13px; opacity: 0.85; margin-top: 8px; }
+.vehicle-stats { display:flex; gap: 24px; }
+.vehicle-stat { text-align: center; }
+.vehicle-stat .num { font-size: 22px; font-weight: 700; }
+.vehicle-stat .label { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+
+/* Loading & empty */
+.loading {
+  text-align: center; padding: 40px; color: var(--text-secondary); font-size: 14px;
+}
+.empty { text-align: center; padding: 30px; color: #9ca3af; font-size: 14px; }
+.error-box {
+  background: var(--danger-light); border: 1px solid #fecaca;
+  color: var(--danger); padding: 14px 18px; border-radius: 12px;
+  margin-bottom: 20px; font-size: 14px; animation: shake 0.4s ease;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* Stagger children */
+.card:nth-child(1) { animation-delay: 0.05s; }
+.card:nth-child(2) { animation-delay: 0.1s; }
+.card:nth-child(3) { animation-delay: 0.15s; }
+.card:nth-child(4) { animation-delay: 0.2s; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .vehicle-banner { flex-direction: column; gap: 16px; align-items: flex-start; }
+  .header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .card-value { font-size: 24px; }
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>My Tesla Dashboard</h1>
-      <div class="status">
-        <div class="status-dot"></div>
-        <span id="connStatus">连接中...</span>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">🚗</div>
+      <div>
+        <h1>My Tesla Dashboard</h1>
+        <p id="vehicleSubtitle">加载中...</p>
       </div>
     </div>
+    <div class="status-pill">
+      <div class="dot"></div>
+      <span id="connStatus">连接中</span>
+    </div>
+  </div>
 
-    <div id="errorBox" style="display:none"></div>
+  <div id="errorBox"></div>
 
-    <div class="cards" id="statusCards">
-      <div class="card">
+  <!-- Vehicle Banner -->
+  <div class="vehicle-banner" id="vehicleBanner" style="display:none">
+    <div>
+      <h2 id="vehicleName">--</h2>
+      <div class="vin" id="vehicleVin">--</div>
+      <div class="meta" id="vehicleMeta">--</div>
+    </div>
+    <div class="vehicle-stats">
+      <div class="vehicle-stat">
+        <div class="num" id="statTotalDistance">--</div>
+        <div class="label">总里程 km</div>
+      </div>
+      <div class="vehicle-stat">
+        <div class="num" id="statTotalEnergy">--</div>
+        <div class="label">总能耗 kWh</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time Status Cards -->
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header">
         <div class="card-label">电池电量</div>
-        <div class="card-value" id="batteryLevel">--<span class="card-unit">%</span></div>
-        <div class="card-sub" id="batteryRange">-- km</div>
+        <div class="card-icon" style="background:var(--primary-light);color:var(--primary)">🔋</div>
       </div>
-      <div class="card">
-        <div class="card-label">可用电量</div>
-        <div class="card-value" id="usableBattery">--<span class="card-unit">%</span></div>
-        <div class="card-sub">实际可用</div>
-      </div>
-      <div class="card">
-        <div class="card-label">总里程</div>
-        <div class="card-value" id="odometer">--<span class="card-unit">km</span></div>
-        <div class="card-sub" id="todayDistance">今日 -- km</div>
-      </div>
-      <div class="card">
-        <div class="card-label">车辆状态</div>
-        <div class="card-value" id="carState">--</div>
-        <div class="card-sub" id="lastUpdate">--</div>
-      </div>
+      <div class="card-value" id="batteryLevel">--<span class="unit">%</span></div>
+      <div class="battery-bar"><div class="battery-bar-inner" id="batteryBar" style="width:0%"></div></div>
+      <div class="card-sub" id="batteryRange">-- km 续航</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">电池电量趋势</div>
-      <div class="controls">
-        <button class="btn active" data-days="1" onclick="loadBatteryHistory(1)">24小时</button>
-        <button class="btn" data-days="7" onclick="loadBatteryHistory(7)">7天</button>
-        <button class="btn" data-days="30" onclick="loadBatteryHistory(30)">30天</button>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-label">可用电量</div>
+        <div class="card-icon" style="background:var(--success-light);color:var(--success)">⚡</div>
+      </div>
+      <div class="card-value" id="usableBattery">--<span class="unit">%</span></div>
+      <div class="card-sub">实际可用容量</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-label">总里程</div>
+        <div class="card-icon" style="background:var(--warning-light);color:var(--warning)">📍</div>
+      </div>
+      <div class="card-value" id="odometer">--<span class="unit">km</span></div>
+      <div class="card-sub" id="todayDistance">今日 -- km</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-label">车辆状态</div>
+        <div class="card-icon" style="background:#ede9fe;color:#7c3aed">🚙</div>
+      </div>
+      <div class="card-value" id="carState">--</div>
+      <div class="card-sub" id="lastUpdate">--</div>
+    </div>
+  </div>
+
+  <!-- Summary Stats Row -->
+  <div class="section-title"><span class="icon">📊</span> 数据概览</div>
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-label">今日行驶</div>
+      <div class="card-value" id="sumTodayDist">--<span class="unit">km</span></div>
+      <div class="card-sub" id="sumTodayDrives">-- 次行程</div>
+    </div>
+    <div class="card">
+      <div class="card-label">本周行驶</div>
+      <div class="card-value" id="sumWeekDist">--<span class="unit">km</span></div>
+      <div class="card-sub" id="sumWeekDrives">-- 次行程</div>
+    </div>
+    <div class="card">
+      <div class="card-label">本月行驶</div>
+      <div class="card-value" id="sumMonthDist">--<span class="unit">km</span></div>
+      <div class="card-sub" id="sumMonthDrives">-- 次行程</div>
+    </div>
+    <div class="card">
+      <div class="card-label">累计充电</div>
+      <div class="card-value" id="sumEnergy">--<span class="unit">kWh</span></div>
+      <div class="card-sub" id="sumCharges">-- 次充电</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="chart-section">
+      <div class="section-title" style="margin-bottom:12px"><span class="icon">📈</span> 电池电量趋势</div>
+      <div class="chart-controls">
+        <button class="chart-btn active" onclick="loadBatteryHistory(1,this)">24小时</button>
+        <button class="chart-btn" onclick="loadBatteryHistory(7,this)">7天</button>
+        <button class="chart-btn" onclick="loadBatteryHistory(30,this)">30天</button>
       </div>
       <div id="batteryChart" class="chart"></div>
     </div>
 
-    <div class="section">
-      <div class="section-title">最近行程</div>
+    <div class="chart-section">
+      <div class="section-title" style="margin-bottom:12px"><span class="icon">⚡</span> 充电效率</div>
+      <div id="efficiencyChart" class="chart"></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="chart-section">
+      <div class="section-title" style="margin-bottom:12px"><span class="icon">🛣️</span> 月度行驶里程</div>
+      <div id="monthlyChart" class="chart"></div>
+    </div>
+
+    <div class="chart-section">
+      <div class="section-title" style="margin-bottom:12px"><span class="icon">🚗</span> 最近30次行程速度分布</div>
+      <div id="speedChart" class="chart"></div>
+    </div>
+  </div>
+
+  <!-- Lists Row -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="list-section">
+      <div class="section-title"><span class="icon">🛣️</span> 最近行程</div>
       <div id="drivesList"><div class="loading">加载中...</div></div>
     </div>
 
-    <div class="section">
-      <div class="section-title">最近充电</div>
+    <div class="list-section">
+      <div class="section-title"><span class="icon">🔌</span> 最近充电</div>
       <div id="chargesList"><div class="loading">加载中...</div></div>
     </div>
   </div>
 
-  <script>
-    const API_BASE = '';
-    let batteryChart = null;
+</div>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initChart();
-      loadCarStatus();
-      loadBatteryHistory(1);
-      loadRecentDrives();
-      loadRecentCharges();
-      setInterval(loadCarStatus, 30000);
+<script>
+const API = '';
+let charts = {};
+
+// ── 初始化 ──
+document.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  loadAll();
+  setInterval(() => { loadCarStatus(); loadStatsSummary(); }, 30000);
+});
+
+function loadAll() {
+  loadVehicleInfo();
+  loadCarStatus();
+  loadStatsSummary();
+  loadBatteryHistory(1, document.querySelector('.chart-btn.active'));
+  loadChargeEfficiency();
+  loadMonthlyStats();
+  loadDriveStats();
+  loadRecentDrives();
+  loadRecentCharges();
+}
+
+// ── 初始化所有图表 ──
+function initCharts() {
+  charts.battery = echarts.init(document.getElementById('batteryChart'));
+  charts.efficiency = echarts.init(document.getElementById('efficiencyChart'));
+  charts.monthly = echarts.init(document.getElementById('monthlyChart'));
+  charts.speed = echarts.init(document.getElementById('speedChart'));
+  window.addEventListener('resize', () => {
+    Object.values(charts).forEach(c => c.resize());
+  });
+}
+
+// ── 通用请求 ──
+async function fetchJSON(url) {
+  const res = await fetch(API + url);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json;
+}
+
+function showError(msg) {
+  document.getElementById('errorBox').innerHTML = '<div class="error-box">⚠️ ' + msg + '</div>';
+}
+function clearError() { document.getElementById('errorBox').innerHTML = ''; }
+
+// ── 车辆信息 Banner ──
+async function loadVehicleInfo() {
+  try {
+    const data = await fetchJSON('/api/vehicle-info');
+    const v = data.vehicle;
+    const s = data.stats;
+    if (v) {
+      document.getElementById('vehicleBanner').style.display = 'flex';
+      document.getElementById('vehicleName').textContent = v.name || 'My Tesla';
+      document.getElementById('vehicleVin').textContent = (v.vin || '').slice(-8);
+      document.getElementById('vehicleMeta').textContent = (v.model || '') + ' · ' + (v.trim_badging || '');
+      document.getElementById('vehicleSubtitle').textContent = v.model + ' · ' + (v.trim_badging || 'Tesla');
+    }
+    if (s) {
+      document.getElementById('statTotalDistance').textContent = Math.round(parseFloat(s.total_distance || 0)).toLocaleString();
+      document.getElementById('statTotalEnergy').textContent = Math.round(parseFloat(s.total_energy_added || 0)).toLocaleString();
+    }
+  } catch (e) { console.error('vehicle info', e); }
+}
+
+// ── 实时状态 ──
+async function loadCarStatus() {
+  try {
+    const data = await fetchJSON('/api/car-status');
+    const pos = data.position;
+    const state = data.state;
+
+    if (pos) {
+      const level = pos.battery_level;
+      const el = document.getElementById('batteryLevel');
+      animateNumber(el, level, '%');
+
+      const bar = document.getElementById('batteryBar');
+      bar.style.width = level + '%';
+      bar.style.background = level > 50 ? 'linear-gradient(90deg,#10b981,#34d399)' : level > 20 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#ef4444,#f87171)';
+
+      document.getElementById('batteryRange').textContent = Math.round(pos.ideal_battery_range_km) + ' km 续航';
+      document.getElementById('usableBattery').innerHTML = pos.usable_battery_level + '<span class="unit">%</span>';
+      document.getElementById('odometer').innerHTML = Math.round(pos.odometer).toLocaleString() + '<span class="unit">km</span>';
+
+      const d = new Date(pos.date);
+      document.getElementById('lastUpdate').textContent = '更新于 ' + d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+    }
+
+    if (state) {
+      const map = {'online':'在线','asleep':'睡眠中','suspended':'休眠','charging':'充电中','driving':'行驶中','updating':'更新中','offline':'离线'};
+      document.getElementById('carState').textContent = map[state.state] || state.state;
+    }
+
+    document.getElementById('todayDistance').textContent = '今日 ' + data.today_distance.toFixed(1) + ' km · ' + data.today_drives + ' 次行程';
+    document.getElementById('connStatus').textContent = '已连接';
+    clearError();
+  } catch (e) {
+    document.getElementById('connStatus').textContent = '连接失败';
+    showError('获取车辆状态失败: ' + e.message);
+  }
+}
+
+// ── 统计汇总 ──
+async function loadStatsSummary() {
+  try {
+    const data = await fetchJSON('/api/stats-summary');
+    document.getElementById('sumTodayDist').innerHTML = data.today.distance.toFixed(1) + '<span class="unit">km</span>';
+    document.getElementById('sumTodayDrives').textContent = '今日行驶';
+    document.getElementById('sumWeekDist').innerHTML = data.week.distance.toFixed(1) + '<span class="unit">km</span>';
+    document.getElementById('sumWeekDrives').textContent = data.week.drives + ' 次行程';
+    document.getElementById('sumMonthDist').innerHTML = data.month.distance.toFixed(1) + '<span class="unit">km</span>';
+    document.getElementById('sumMonthDrives').textContent = data.month.drives + ' 次行程';
+    document.getElementById('sumEnergy').innerHTML = data.charges.energy.toFixed(1) + '<span class="unit">kWh</span>';
+    document.getElementById('sumCharges').textContent = data.charges.count + ' 次充电';
+  } catch (e) { console.error('stats summary', e); }
+}
+
+// ── 电池历史 ──
+async function loadBatteryHistory(days, btn) {
+  if (btn) {
+    document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  try {
+    const data = await fetchJSON('/api/battery-history?days=' + days);
+    const times = data.data.map(d => {
+      const date = new Date(d.time);
+      return days === 1 ? date.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}) : date.toLocaleDateString('zh-CN',{month:'short',day:'numeric'});
     });
+    charts.battery.setOption({
+      backgroundColor:'transparent',
+      tooltip: {
+        trigger:'axis', backgroundColor:'#fff', borderColor:'#e5e7eb', textStyle:{color:'#1a1a2e'},
+        formatter: p => '<div style="font-weight:600;margin-bottom:4px">' + p[0].axisValue + '</div>' + p.map(x => '<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+x.color+'"></span><span>'+x.seriesName+': '+x.value+'%</span></div>').join('')
+      },
+      grid:{left:50,right:20,top:20,bottom:30},
+      xAxis:{type:'category',data:times,axisLine:{lineStyle:{color:'#e5e7eb'}},axisLabel:{color:'#9ca3af',fontSize:11},axisTick:{show:false}},
+      yAxis:{type:'value',min:0,max:100,axisLine:{show:false},splitLine:{lineStyle:{color:'#f3f4f6'}},axisLabel:{color:'#9ca3af',fontSize:11,formatter:'{value}%'}},
+      series:[
+        {name:'电池电量',type:'line',smooth:true,symbol:'none',lineStyle:{width:3,color:'#2563eb'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(37,99,235,0.15)'},{offset:1,color:'rgba(37,99,235,0)'}])},data:data.data.map(d=>d.battery_level)},
+        {name:'可用电量',type:'line',smooth:true,symbol:'none',lineStyle:{width:2,color:'#10b981'},data:data.data.map(d=>d.usable_battery_level)}
+      ]
+    });
+  } catch (e) { showError('电池历史加载失败: ' + e.message); }
+}
 
-    function initChart() {
-      batteryChart = echarts.init(document.getElementById('batteryChart'));
-      const option = {
-        backgroundColor: 'transparent',
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: '#1a1a1a',
-          borderColor: '#333',
-          textStyle: { color: '#e0e0e0' },
-          formatter: function(params) {
-            const d = new Date(params[0].axisValue);
-            const time = d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-            let html = '<div style="font-weight:600;margin-bottom:4px">' + time + '</div>';
-            params.forEach(p => {
-              html += '<div style="display:flex;align-items:center;gap:6px">' +
-                '<span style="width:8px;height:8px;border-radius:50%;background:' + p.color + '"></span>' +
-                '<span>' + p.seriesName + ': ' + p.value + '%</span></div>';
-            });
-            return html;
-          }
-        },
-        grid: { left: 50, right: 30, top: 20, bottom: 40 },
-        xAxis: {
-          type: 'category',
-          data: [],
-          axisLine: { lineStyle: { color: '#333' } },
-          axisLabel: { color: '#666', fontSize: 11 },
-          axisTick: { show: false }
-        },
-        yAxis: {
-          type: 'value',
-          min: 0,
-          max: 100,
-          axisLine: { show: false },
-          splitLine: { lineStyle: { color: '#1a1a1a' } },
-          axisLabel: { color: '#666', fontSize: 11, formatter: '{value}%' }
-        },
-        series: [
-          {
-            name: '电池电量',
-            type: 'line',
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 2, color: '#2563eb' },
-            areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(37, 99, 235, 0.3)' },
-                { offset: 1, color: 'rgba(37, 99, 235, 0)' }
-              ])
-            },
-            data: []
-          },
-          {
-            name: '可用电量',
-            type: 'line',
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 2, color: '#22c55e' },
-            data: []
-          }
-        ]
-      };
-      batteryChart.setOption(option);
-      window.addEventListener('resize', () => batteryChart.resize());
-    }
+// ── 充电效率 ──
+async function loadChargeEfficiency() {
+  try {
+    const data = await fetchJSON('/api/charge-efficiency?days=30');
+    const days = data.data.map(d => new Date(d.day).toLocaleDateString('zh-CN',{month:'short',day:'numeric'}));
+    charts.efficiency.setOption({
+      backgroundColor:'transparent',
+      tooltip:{trigger:'axis',backgroundColor:'#fff',borderColor:'#e5e7eb',textStyle:{color:'#1a1a2e'}},
+      grid:{left:50,right:20,top:20,bottom:30},
+      xAxis:{type:'category',data:days,axisLine:{lineStyle:{color:'#e5e7eb'}},axisLabel:{color:'#9ca3af',fontSize:11},axisTick:{show:false}},
+      yAxis:{type:'value',axisLine:{show:false},splitLine:{lineStyle:{color:'#f3f4f6'}},axisLabel:{color:'#9ca3af',fontSize:11}},
+      series:[
+        {name:'充电量(kWh)',type:'bar',barWidth:'60%',itemStyle:{borderRadius:[6,6,0,0],color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#3b82f6'},{offset:1,color:'#60a5fa'}])},data:data.data.map(d=>d.energy_added)},
+        {name:'充电次数',type:'line',smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#f59e0b'},itemStyle:{color:'#f59e0b'},data:data.data.map(d=>d.charge_count)}
+      ]
+    });
+  } catch (e) { console.error('charge efficiency', e); }
+}
 
-    async function loadCarStatus() {
-      try {
-        const res = await fetch(API_BASE + '/api/car-status');
-        const json = await res.json();
-        if (!json.success) throw new Error(json.error);
+// ── 月度统计 ──
+async function loadMonthlyStats() {
+  try {
+    const data = await fetchJSON('/api/monthly-stats');
+    const months = data.data.map(d => {
+      const date = new Date(d.month);
+      return date.getFullYear() + '年' + (date.getMonth()+1) + '月';
+    });
+    charts.monthly.setOption({
+      backgroundColor:'transparent',
+      tooltip:{trigger:'axis',backgroundColor:'#fff',borderColor:'#e5e7eb',textStyle:{color:'#1a1a2e'}},
+      grid:{left:50,right:20,top:20,bottom:40},
+      xAxis:{type:'category',data:months,axisLine:{lineStyle:{color:'#e5e7eb'}},axisLabel:{color:'#9ca3af',fontSize:11,rotate:30},axisTick:{show:false}},
+      yAxis:{type:'value',axisLine:{show:false},splitLine:{lineStyle:{color:'#f3f4f6'}},axisLabel:{color:'#9ca3af',fontSize:11,formatter:'{value} km'}},
+      series:[
+        {name:'行驶里程',type:'bar',barWidth:'50%',itemStyle:{borderRadius:[6,6,0,0],color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#10b981'},{offset:1,color:'#34d399'}])},data:data.data.map(d=>parseFloat(d.total_distance))},
+        {name:'行程次数',type:'line',smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#8b5cf6'},itemStyle:{color:'#8b5cf6'},data:data.data.map(d=>parseInt(d.drive_count))}
+      ]
+    });
+  } catch (e) { console.error('monthly stats', e); }
+}
 
-        const pos = json.position;
-        const state = json.state;
+// ── 驾驶统计 ──
+async function loadDriveStats() {
+  try {
+    const data = await fetchJSON('/api/drive-stats');
+    const speeds = data.recent.map(d => parseFloat(d.avg_speed) || 0).filter(s => s > 0);
+    charts.speed.setOption({
+      backgroundColor:'transparent',
+      tooltip:{trigger:'axis',backgroundColor:'#fff',borderColor:'#e5e7eb',textStyle:{color:'#1a1a2e'}},
+      grid:{left:50,right:20,top:20,bottom:30},
+      xAxis:{type:'category',data:speeds.map((_,i)=>'第'+(i+1)+'次'),axisLine:{lineStyle:{color:'#e5e7eb'}},axisLabel:{color:'#9ca3af',fontSize:10},axisTick:{show:false}},
+      yAxis:{type:'value',axisLine:{show:false},splitLine:{lineStyle:{color:'#f3f4f6'}},axisLabel:{color:'#9ca3af',fontSize:11,formatter:'{value} km/h'}},
+      series:[{name:'平均速度',type:'bar',barWidth:'60%',itemStyle:{borderRadius:[4,4,0,0],color:'#8b5cf6'},data:speeds}]
+    });
+  } catch (e) { console.error('drive stats', e); }
+}
 
-        if (pos) {
-          const level = pos.battery_level;
-          const el = document.getElementById('batteryLevel');
-          el.textContent = level;
-          el.className = 'card-value ' + (level > 50 ? 'battery-high' : level > 20 ? 'battery-mid' : 'battery-low');
-          document.getElementById('batteryRange').textContent = Math.round(pos.ideal_battery_range_km) + ' km 续航';
-          document.getElementById('usableBattery').textContent = pos.usable_battery_level;
-          document.getElementById('odometer').textContent = Math.round(pos.odometer).toLocaleString();
-          const d = new Date(pos.date);
-          document.getElementById('lastUpdate').textContent = '更新于 ' + d.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        }
+// ── 最近行程 ──
+async function loadRecentDrives() {
+  try {
+    const data = await fetchJSON('/api/recent-drives?limit=6');
+    const el = document.getElementById('drivesList');
+    if (!data.data.length) { el.innerHTML = '<div class="empty">暂无行程数据</div>'; return; }
+    el.innerHTML = data.data.map(d => {
+      const start = new Date(d.start_date);
+      const ds = start.toLocaleDateString('zh-CN',{month:'short',day:'numeric'});
+      const ts = start.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+      const dur = d.duration_min ? Math.floor(d.duration_min) + '分钟' : '--';
+      return '<div class="list-item"><div class="list-left"><div class="list-title">' + ds + ' ' + ts + '</div><div class="list-meta">' + dur + ' · ' + d.start_km + 'km → ' + d.end_km + 'km</div></div><div class="list-right"><div class="list-value">' + d.distance + ' km</div></div></div>';
+    }).join('');
+  } catch (e) { document.getElementById('drivesList').innerHTML = '<div class="empty">加载失败</div>'; }
+}
 
-        if (state) {
-          const stateMap = {
-            'online': '在线', 'asleep': '睡眠中', 'suspended': '休眠',
-            'charging': '充电中', 'driving': '行驶中', 'updating': '更新中', 'offline': '离线'
-          };
-          document.getElementById('carState').textContent = stateMap[state.state] || state.state;
-        }
+// ── 最近充电 ──
+async function loadRecentCharges() {
+  try {
+    const data = await fetchJSON('/api/recent-charges?limit=6');
+    const el = document.getElementById('chargesList');
+    if (!data.data.length) { el.innerHTML = '<div class="empty">暂无充电数据</div>'; return; }
+    el.innerHTML = data.data.map(c => {
+      const start = new Date(c.start_date);
+      const ds = start.toLocaleDateString('zh-CN',{month:'short',day:'numeric'});
+      const ts = start.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+      const dur = c.duration_min ? Math.floor(c.duration_min) + '分钟' : '--';
+      return '<div class="list-item"><div class="list-left"><div class="list-title">' + ds + ' ' + ts + '</div><div class="list-meta">' + dur + ' · ' + c.start_battery + '% → ' + c.end_battery + '%</div></div><div class="list-right"><div class="list-value">+' + c.energy_added + ' kWh</div><div class="list-sub">' + (c.cost ? '¥' + c.cost : '无费用记录') + '</div></div></div>';
+    }).join('');
+  } catch (e) { document.getElementById('chargesList').innerHTML = '<div class="empty">加载失败</div>'; }
+}
 
-        document.getElementById('todayDistance').textContent = '今日 ' + json.today_distance.toFixed(1) + ' km';
-        document.getElementById('connStatus').textContent = '已连接';
-        hideError();
-      } catch (err) {
-        console.error('获取状态失败:', err);
-        document.getElementById('connStatus').textContent = '连接失败';
-        showError('获取车辆状态失败: ' + err.message);
-      }
-    }
-
-    async function loadBatteryHistory(days) {
-      document.querySelectorAll('.controls .btn').forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
-      });
-      try {
-        const res = await fetch(API_BASE + '/api/battery-history?days=' + days);
-        const json = await res.json();
-        if (!json.success) throw new Error(json.error);
-
-        const times = json.data.map(d => d.time);
-        const levels = json.data.map(d => d.battery_level);
-        const usable = json.data.map(d => d.usable_battery_level);
-
-        batteryChart.setOption({
-          xAxis: { data: times },
-          series: [{ data: levels }, { data: usable }]
-        });
-      } catch (err) {
-        console.error('获取电池历史失败:', err);
-        showError('获取电池历史失败: ' + err.message);
-      }
-    }
-
-    async function loadRecentDrives() {
-      try {
-        const res = await fetch(API_BASE + '/api/recent-drives?limit=5');
-        const json = await res.json();
-        if (!json.success) throw new Error(json.error);
-
-        const container = document.getElementById('drivesList');
-        if (json.data.length === 0) {
-          container.innerHTML = '<div class="empty">暂无行程数据</div>';
-          return;
-        }
-        container.innerHTML = json.data.map(d => {
-          const start = new Date(d.start_date);
-          const dateStr = start.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-          const timeStr = start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-          const duration = d.duration_min ? Math.floor(d.duration_min) + '分钟' : '--';
-          return '<div class="list-item">' +
-            '<div class="list-left">' +
-              '<div class="list-title">' + dateStr + ' ' + timeStr + '</div>' +
-              '<div class="list-meta">' + duration + ' · ' + d.start_km + 'km → ' + d.end_km + 'km</div>' +
-            '</div>' +
-            '<div class="list-right">' +
-              '<div class="list-value">' + d.distance + ' km</div>' +
-            '</div>' +
-          '</div>';
-        }).join('');
-      } catch (err) {
-        console.error('获取行程失败:', err);
-        document.getElementById('drivesList').innerHTML = '<div class="empty">加载失败: ' + err.message + '</div>';
-      }
-    }
-
-    async function loadRecentCharges() {
-      try {
-        const res = await fetch(API_BASE + '/api/recent-charges?limit=5');
-        const json = await res.json();
-        if (!json.success) throw new Error(json.error);
-
-        const container = document.getElementById('chargesList');
-        if (json.data.length === 0) {
-          container.innerHTML = '<div class="empty">暂无充电数据</div>';
-          return;
-        }
-        container.innerHTML = json.data.map(c => {
-          const start = new Date(c.start_date);
-          const dateStr = start.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-          const timeStr = start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-          const duration = c.duration_min ? Math.floor(c.duration_min) + '分钟' : '--';
-          return '<div class="list-item">' +
-            '<div class="list-left">' +
-              '<div class="list-title">' + dateStr + ' ' + timeStr + '</div>' +
-              '<div class="list-meta">' + duration + ' · ' + c.start_battery + '% → ' + c.end_battery + '%</div>' +
-            '</div>' +
-            '<div class="list-right">' +
-              '<div class="list-value">+' + c.energy_added + ' kWh</div>' +
-              '<div class="list-sub">' + (c.cost ? '¥' + c.cost : '无费用记录') + '</div>' +
-            '</div>' +
-          '</div>';
-        }).join('');
-      } catch (err) {
-        console.error('获取充电记录失败:', err);
-        document.getElementById('chargesList').innerHTML = '<div class="empty">加载失败</div>';
-      }
-    }
-
-    function showError(msg) {
-      const box = document.getElementById('errorBox');
-      box.innerHTML = '<div class="error">⚠️ ' + msg + '</div>';
-      box.style.display = 'block';
-    }
-    function hideError() {
-      document.getElementById('errorBox').style.display = 'none';
-    }
-  </script>
+// ── 数字滚动动画 ──
+function animateNumber(el, target, suffix) {
+  const start = parseFloat(el.textContent) || 0;
+  const diff = target - start;
+  if (Math.abs(diff) < 0.1) { el.innerHTML = target + '<span class="unit">' + suffix + '</span>'; return; }
+  const duration = 800;
+  const startTime = performance.now();
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = start + diff * ease;
+    el.innerHTML = Math.round(current) + '<span class="unit">' + suffix + '</span>';
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+</script>
 </body>
 </html>
