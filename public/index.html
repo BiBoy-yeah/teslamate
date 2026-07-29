@@ -357,17 +357,16 @@
           return '<div class="list-item">' +
             '<div class="list-left">' +
               '<div class="list-title">' + dateStr + ' ' + timeStr + '</div>' +
-              '<div class="list-meta">' + duration + ' · ' + d.start_battery + '% → ' + d.end_battery + '%</div>' +
+              '<div class="list-meta">' + duration + ' · ' + d.start_km + 'km → ' + d.end_km + 'km</div>' +
             '</div>' +
             '<div class="list-right">' +
               '<div class="list-value">' + d.distance + ' km</div>' +
-              '<div class="list-sub">' + d.start_km + ' → ' + d.end_km + ' km</div>' +
             '</div>' +
           '</div>';
         }).join('');
       } catch (err) {
         console.error('获取行程失败:', err);
-        document.getElementById('drivesList').innerHTML = '<div class="empty">加载失败</div>';
+        document.getElementById('drivesList').innerHTML = '<div class="empty">加载失败: ' + err.message + '</div>';
       }
     }
 
