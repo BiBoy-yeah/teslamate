@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Tesla Dashboard</title>
+  <!-- ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    /* 头部 */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 { font-size: 24px; font-weight: 600; color: #fff; }
+    .header .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #888;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #22c55e; animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* 状态卡片 */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #333; }
+    .card-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .card-unit {
+      font-size: 14px;
+      color: #666;
+      margin-left: 4px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+    .battery-high { color: #22c55e; }
+    .battery-mid { color: #eab308; }
+    .battery-low { color: #ef4444; }
+
+    /* 图表区域 */
+    .section {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chart { width: 100%; height: 350px; }
+
+    /* 控制栏 */
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .btn {
+      padding: 6px 14px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: #222; border-color: #444; }
+    .btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+    /* 列表 */
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #1f1f1f;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-left { display: flex; flex-direction: column; gap: 4px; }
+    .list-title { font-size: 14px; color: #e0e0e0; }
+    .list-meta { font-size: 12px; color: #666; }
+    .list-right { text-align: right; }
+    .list-value { font-size: 14px; font-weight: 600; color: #fff; }
+    .list-sub { font-size: 12px; color: #666; }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .error {
+      background: #1a0505;
+      border: 1px solid #451a1a;
+      color: #ef4444;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .card-value { font-size: 24px; }
+      .chart { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <h1>🚗 My Tesla Dashboard</h1>
+      <div class="status">
+        <div class="status-dot"></div>
+        <span id="connStatus">连接中...</span>
+      </div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="errorBox" style="display:none"></div>
+
+    <!-- 实时状态卡片 -->
+    <div class="cards" id="statusCards">
+      <div class="card">
+        <div class="card-label">电池电量</div>
+        <div class="card-value" id="batteryLevel">--<span class="card-unit">%</span></div>
+        <div class="card-sub" id="batteryRange">-- km</div>
+      </div>
+      <div class="card">
+        <div class="card-label">可用电量</div>
+        <div class="card-value" id="usableBattery">--<span class="card-unit">%</span></div>
+        <div class="card-sub">实际可用</div>
+      </div>
+      <div class="card">
+        <div class="card-label">总里程</div>
+        <div class="card-value" id="odometer">--<span class="card-unit">km</span></div>
+        <div class="card-sub" id="todayDistance">今日 -- km</div>
+      </div>
+      <div class="card">
+        <div class="card-label">车辆状态</div>
+        <div class="card-value" id="carState">--</div>
+        <div class="card-sub" id="lastUpdate">--</div>
+      </div>
+    </div>
+
+    <!-- 电池历史图表 -->
+    <div class="section">
+      <div class="section-title">📊 电池电量趋势</div>
+      <div class="controls">
+        <button class="btn active" data-days="1" onclick="loadBatteryHistory(1)">24小时</button>
+        <button class="btn" data-days="7" onclick="loadBatteryHistory(7)">7天</button>
+        <button class="btn" data-days="30" onclick="loadBatteryHistory(30)">30天</button>
+      </div>
+      <div id="batteryChart" class="chart"></div>
+    </div>
+
+    <!-- 最近行程 -->
+    <div class="section">
+      <div class="section-title">🛣️ 最近行程</div>
+      <div id="drivesList"><div class="loading">加载中...</div></div>
+    </div>
+
+    <!-- 最近充电 -->
+    <div class="section">
+      <div class="section-title">⚡ 最近充电</div>
+      <div id="chargesList"><div class="loading">加载中...</div></div>
+    </div>
+  </div>
+
+  <script>
+    // ───────────────────────────────────────────────
+    // 配置
+    // ───────────────────────────────────────────────
+    const API_BASE = ''; // 同域部署，留空即可
+    let batteryChart = null;
+
+    // ───────────────────────────────────────────────
+    // 初始化
+    // ───────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      initChart();
+      loadCarStatus();
+      loadBatteryHistory(1);
+      loadRecentDrives();
+      loadRecentCharges();
+
+      // 每30秒刷新一次实时状态
+      setInterval(loadCarStatus, 30000);
+    });
+
+    // ───────────────────────────────────────────────
+    // 初始化 ECharts
+    // ───────────────────────────────────────────────
+    function initChart() {
+      batteryChart = echarts.init(document.getElementById('batteryChart'));
+
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: '#1a1a1a',
+          borderColor: '#333',
+          textStyle: { color: '#e0e0e0' },
+          formatter: function(params) {
+            const d = new Date(params[0].axisValue);
+            const time = d.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            let html = `<div style="font-weight:600;margin-bottom:4px">${time}</div>`;
+            params.forEach(p => {
+              html += `<div style="display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
+                <span>${p.seriesName}: ${p.value}%</span>
+              </div>`;
+            });
+            return html;
+          }
+        },
+        grid: { left: 50, right: 30, top: 20, bottom: 40 },
+        xAxis: {
+          type: 'category',
+          data: [],
+          axisLine: { lineStyle: { color: #333' } },
+          axisLabel: { color: '#666', fontSize: 11 },
+          axisTick: { show: false }
+        },
+        yAxis: {
+          type: 'value',
+          min: 0,
+          max: 100,
+          axisLine: { show: false },
+          splitLine: { lineStyle: { color: '#1a1a1a' } },
+          axisLabel: { color: '#666', fontSize: 11, formatter: '{value}%' }
+        },
+        series: [
+          {
+            name: '电池电量',
+            type: 'line',
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 2, color: '#2563eb' },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(37, 99, 235, 0.3)' },
+                { offset: 1, color: 'rgba(37, 99, 235, 0)' }
+              ])
+            },
+            data: []
+          },
+          {
+            name: '可用电量',
+            type: 'line',
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 2, color: '#22c55e' },
+            data: []
+          }
+        ]
+      };
+
+      batteryChart.setOption(option);
+      window.addEventListener('resize', () => batteryChart.resize());
+    }
+
+    // ───────────────────────────────────────────────
+    // 加载实时状态
+    // ───────────────────────────────────────────────
+    async function loadCarStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/api/car-status`);
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error);
+
+        const pos = json.position;
+        const state = json.state;
+
+        if (pos) {
+          const level = pos.battery_level;
+          const el = document.getElementById('batteryLevel');
+          el.textContent = level;
+          el.className = 'card-value ' + (level > 50 ? 'battery-high' : level > 20 ? 'battery-mid' : 'battery-low');
+
+          document.getElementById('batteryRange').textContent = 
+            `${Math.round(pos.ideal_battery_range_km)} km 续航`;
+          document.getElementById('usableBattery').textContent = pos.usable_battery_level;
+          document.getElementById('odometer').textContent = Math.round(pos.odometer).toLocaleString();
+
+          const d = new Date(pos.date);
+          document.getElementById('lastUpdate').textContent = 
+            '更新于 ' + d.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        if (state) {
+          const stateMap = {
+            'online': '在线',
+            'asleep': '睡眠中',
+            'suspended': '休眠',
+            'charging': '充电中',
+            'driving': '行驶中',
+            'updating': '更新中',
+            'offline': '离线'
+          };
+          document.getElementById('carState').textContent = stateMap[state.state] || state.state;
+        }
+
+        document.getElementById('todayDistance').textContent = 
+          `今日 ${json.today_distance.toFixed(1)} km`;
+
+        document.getElementById('connStatus').textContent = '已连接';
+        hideError();
+      } catch (err) {
+        console.error('获取状态失败:', err);
+        document.getElementById('connStatus').textContent = '连接失败';
+        showError('获取车辆状态失败: ' + err.message);
+      }
+    }
+
+    // ───────────────────────────────────────────────
+    // 加载电池历史
+    // ───────────────────────────────────────────────
+    async function loadBatteryHistory(days) {
+      // 更新按钮状态
+      document.querySelectorAll('.controls .btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+      });
+
+      try {
+        const res = await fetch(`${API_BASE}/api/battery-history?days=${days}`);
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error);
+
+        const times = json.data.map(d => d.time);
+        const levels = json.data.map(d => d.battery_level);
+        const usable = json.data.map(d => d.usable_battery_level);
+
+        batteryChart.setOption({
+          xAxis: { data: times },
+          series: [
+            { data: levels },
+            { data: usable }
+          ]
+        });
+      } catch (err) {
+        console.error('获取电池历史失败:', err);
+        showError('获取电池历史失败: ' + err.message);
+      }
+    }
+
+    // ───────────────────────────────────────────────
+    // 加载最近行程
+    // ───────────────────────────────────────────────
+    async function loadRecentDrives() {
+      try {
+        const res = await fetch(`${API_BASE}/api/recent-drives?limit=5`);
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error);
+
+        const container = document.getElementById('drivesList');
+        if (json.data.length === 0) {
+          container.innerHTML = '<div class="loading">暂无行程数据</div>';
+          return;
+        }
+
+        container.innerHTML = json.data.map(d => {
+          const start = new Date(d.start_date);
+          const dateStr = start.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+          const timeStr = start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          const duration = d.duration_min ? `${Math.floor(d.duration_min)}分钟` : '--';
+
+          return `
+            <div class="list-item">
+              <div class="list-left">
+                <div class="list-title">${dateStr} ${timeStr}</div>
+                <div class="list-meta">${duration} · ${d.start_battery}% → ${d.end_battery}%</div>
+              </div>
+              <div class="list-right">
+                <div class="list-value">${d.distance} km</div>
+                <div class="list-sub">${d.start_km} → ${d.end_km} km</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('获取行程失败:', err);
+        document.getElementById('drivesList').innerHTML = '<div class="loading">加载失败</div>';
+      }
+    }
+
+    // ───────────────────────────────────────────────
+    // 加载最近充电
+    // ───────────────────────────────────────────────
+    async function loadRecentCharges() {
+      try {
+        const res = await fetch(`${API_BASE}/api/recent-charges?limit=5`);
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error);
+
+        const container = document.getElementById('chargesList');
+        if (json.data.length === 0) {
+          container.innerHTML = '<div class="loading">暂无充电数据</div>';
+          return;
+        }
+
+        container.innerHTML = json.data.map(c => {
+          const start = new Date(c.start_date);
+          const dateStr = start.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+          const timeStr = start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          const duration = c.duration_min ? `${Math.floor(c.duration_min)}分钟` : '--';
+
+          return `
+            <div class="list-item">
+              <div class="list-left">
+                <div class="list-title">${dateStr} ${timeStr}</div>
+                <div class="list-meta">${duration} · ${c.start_battery}% → ${c.end_battery}%</div>
+              </div>
+              <div class="list-right">
+                <div class="list-value">+${c.energy_added} kWh</div>
+                <div class="list-sub">${c.cost ? '¥' + c.cost : '无费用记录'}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('获取充电记录失败:', err);
+        document.getElementById('chargesList').innerHTML = '<div class="loading">加载失败</div>';
+      }
+    }
+
+    // ───────────────────────────────────────────────
+    // 错误处理
+    // ───────────────────────────────────────────────
+    function showError(msg) {
+      const box = document.getElementById('errorBox');
+      box.innerHTML = `<div class="error">⚠️ ${msg}</div>`;
+      box.style.display = 'block';
+    }
+    function hideError() {
+      document.getElementById('errorBox').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
