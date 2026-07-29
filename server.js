@@ -7,13 +7,8 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 允许跨域
 app.use(cors());
-
-// 解析 JSON body
 app.use(express.json());
-
-// 静态文件服务（前端页面）
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ───────────────────────────────────────────────
@@ -34,11 +29,18 @@ const pool = new Pool({
 });
 
 pool.on('connect', () => {
-  console.log('✅ PostgreSQL 已连接');
+  console.log('PostgreSQL connected');
 });
 
 pool.on('error', (err) => {
-  console.error('❌ PostgreSQL 连接错误:', err.message);
+  console.error('PostgreSQL error:', err.message);
+});
+
+// ───────────────────────────────────────────────
+// API: 健康检查
+// ───────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 // ───────────────────────────────────────────────
@@ -53,7 +55,59 @@ app.get('/api/cars', async (req, res) => {
     `);
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    console.error('获取车辆列表失败:', err.message);
+    console.error('cars error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ───────────────────────────────────────────────
+// API: 获取最新车辆状态（实时）
+// ───────────────────────────────────────────────
+app.get('/api/car-status', async (req, res) => {
+  const carId = req.query.car_id || 1;
+
+  try {
+    const posResult = await pool.query(`
+      SELECT 
+        battery_level,
+        usable_battery_level,
+        ideal_battery_range_km,
+        odometer,
+        speed,
+        latitude,
+        longitude,
+        outside_temp,
+        inside_temp,
+        date
+      FROM positions
+      WHERE car_id = $1
+      ORDER BY date DESC
+      LIMIT 1
+    `, [carId]);
+
+    const stateResult = await pool.query(`
+      SELECT state, start_date, end_date
+      FROM states
+      WHERE car_id = $1
+      ORDER BY start_date DESC
+      LIMIT 1
+    `, [carId]);
+
+    const driveResult = await pool.query(`
+      SELECT COALESCE(SUM(end_km - start_km), 0) AS today_distance
+      FROM drives
+      WHERE car_id = $1
+        AND start_date > CURRENT_DATE
+    `, [carId]);
+
+    res.json({
+      success: true,
+      position: posResult.rows[0] || null,
+      state: stateResult.rows[0] || null,
+      today_distance: parseFloat(driveResult.rows[0]?.today_distance || 0)
+    });
+  } catch (err) {
+    console.error('car-status error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -93,65 +147,14 @@ app.get('/api/battery-history', async (req, res) => {
       }))
     });
   } catch (err) {
-    console.error('获取电池历史失败:', err.message);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ───────────────────────────────────────────────
-// API: 获取最新车辆状态（实时）
-// ───────────────────────────────────────────────
-app.get('/api/car-status', async (req, res) => {
-  const carId = req.query.car_id || 1;
-
-  try {
-    const posResult = await pool.query(`
-      SELECT 
-        battery_level,
-        usable_battery_level,
-        ideal_battery_range_km,
-        odometer,
-        speed,
-        latitude,
-        longitude,
-        outside_temp,
-        inside_temp,
-        date
-      FROM positions
-      WHERE car_id = $1
-      ORDER BY date DESC
-      LIMIT 1
-    `, [carId]);
-
-    const stateResult = await pool.query(`
-      SELECT state, start_date, end_date
-      FROM states
-      WHERE car_id = $1
-      ORDER BY start_date DESC
-      LIMIT 1
-    `, [carId]);
-
-    const driveResult = await pool.query(`
-      SELECT COALESCE(SUM(distance), 0) AS today_distance
-      FROM drives
-      WHERE car_id = $1
-        AND start_date > CURRENT_DATE
-    `, [carId]);
-
-    res.json({
-      success: true,
-      position: posResult.rows[0] || null,
-      state: stateResult.rows[0] || null,
-      today_distance: parseFloat(driveResult.rows[0]?.today_distance || 0)
-    });
-  } catch (err) {
-    console.error('获取车辆状态失败:', err.message);
+    console.error('battery-history error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // ───────────────────────────────────────────────
 // API: 获取最近行程列表
+// 修复：drives 表没有 distance / start_battery_level / end_battery_level 字段
 // ───────────────────────────────────────────────
 app.get('/api/recent-drives', async (req, res) => {
   const carId = req.query.car_id || 1;
@@ -162,12 +165,10 @@ app.get('/api/recent-drives', async (req, res) => {
       SELECT 
         start_date,
         end_date,
-        ROUND(distance::numeric, 1) AS distance,
+        ROUND((end_km - start_km)::numeric, 1) AS distance,
         ROUND(duration_min::numeric, 1) AS duration_min,
         ROUND(start_km::numeric, 1) AS start_km,
-        ROUND(end_km::numeric, 1) AS end_km,
-        ROUND(start_battery_level::numeric, 0) AS start_battery,
-        ROUND(end_battery_level::numeric, 0) AS end_battery
+        ROUND(end_km::numeric, 1) AS end_km
       FROM drives
       WHERE car_id = $1
       ORDER BY start_date DESC
@@ -176,7 +177,7 @@ app.get('/api/recent-drives', async (req, res) => {
 
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    console.error('获取行程失败:', err.message);
+    console.error('recent-drives error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -207,7 +208,7 @@ app.get('/api/recent-charges', async (req, res) => {
 
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    console.error('获取充电记录失败:', err.message);
+    console.error('recent-charges error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -222,7 +223,7 @@ app.get('/api/monthly-stats', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         DATE_TRUNC('month', start_date) AS month,
-        ROUND(SUM(distance)::numeric, 1) AS total_distance,
+        ROUND(SUM(end_km - start_km)::numeric, 1) AS total_distance,
         ROUND(SUM(duration_min)::numeric, 1) AS total_duration,
         COUNT(*) AS drive_count
       FROM drives
@@ -234,21 +235,12 @@ app.get('/api/monthly-stats', async (req, res) => {
 
     res.json({ success: true, data: result.rows });
   } catch (err) {
-    console.error('获取月度统计失败:', err.message);
+    console.error('monthly-stats error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ───────────────────────────────────────────────
-// 健康检查
-// ───────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// 启动服务
+// 启动
 app.listen(PORT, () => {
-  console.log('🚗 TeslaMate Dashboard API 已启动');
-  console.log(`📡 端口: ${PORT}`);
-  console.log(`🌐 访问: http://localhost:${PORT}`);
+  console.log('TeslaMate Dashboard API running on port ' + PORT);
 });
